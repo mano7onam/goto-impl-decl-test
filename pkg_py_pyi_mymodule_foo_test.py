@@ -1,0 +1,3 @@
+import pkg_py_pyi_mymodule_foo
+
+pkg_py_pyi_mymodule_foo.a

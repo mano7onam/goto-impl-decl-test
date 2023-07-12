@@ -1,0 +1,146 @@
+!!You**:_____
+Act as senior Java Developer
+Refactor this method and explain why it became more optimal
+
+@Override
+  public boolean execute(@NotNull PsiElement element, @NotNull final Processor<? super PsiElement> consumer) {
+    if (element instanceof PyElement) {
+      final PsiElement finalElement = element;
+      boolean isInsideStub = ReadAction.compute(() -> PyiUtil.isInsideStub(finalElement));
+      if (isInsideStub) {
+        var originalElement = ReadAction.compute(() -> PyiUtil.getOriginalElement((PyElement)finalElement));
+        if (originalElement != null) {
+          element = originalElement;
+          if (!consumer.process(element)) return false;
+        }
+      }
+    }
+    final PsiElement e = element;
+    if (e instanceof PyClass) {
+      final Query<PyClass> query = PyClassInheritorsSearch.search((PyClass)e, true);
+
+      if (!(query instanceof EmptyQuery<PyClass>)) {
+        return query.forEach(consumer);
+      }
+    }
+    else if (e instanceof PyFunction) {
+      final Query<PyFunction> query =
+        ReadAction.compute(() -> PyOverridingMethodsSearch.search((PyFunction)e, true, true));
+
+      if (!(query instanceof EmptyQuery<PyFunction>)) {
+        return query.forEach(consumer);
+      }
+    }
+    else if (e instanceof PyTargetExpression) {  // PY-237
+      final PsiElement parent = ReadAction.compute(() -> e.getParent());
+
+      if (parent instanceof PyAssignmentStatement) {
+        return consumer.process(parent);
+      }
+    }
+    return true;
+  }
+!!Bot**:_____
+I have refactored the method as follows:
+
+```java
+@Override
+public boolean execute(@NotNull PsiElement element, @NotNull final Processor<? super PsiElement> consumer) {
+    if (element instanceof PyElement) {
+        final boolean isInsideStub = ReadAction.compute(() -> PyiUtil.isInsideStub(element));
+        if (isInsideStub) {
+            final PsiElement originalElement = ReadAction.compute(() -> PyiUtil.getOriginalElement((PyElement) element));
+            if (originalElement != null) {
+                element = originalElement;
+                if (!consumer.process(element)) return false;
+            }
+        }
+    }
+
+    if (element instanceof PyClass) {
+        return processInheritors((PyClass) element, consumer);
+    } else if (element instanceof PyFunction) {
+        return processOverridingMethods((PyFunction) element, consumer);
+    } else if (element instanceof PyTargetExpression) {
+        return processAssignmentStatement(element, consumer);
+    }
+
+    return true;
+}
+
+private boolean processInheritors(PyClass pyClass, Processor<? super PsiElement> consumer) {
+    final Query<PyClass> query = PyClassInheritorsSearch.search(pyClass, true);
+    return !(query instanceof EmptyQuery) && query.forEach(consumer);
+}
+
+private boolean processOverridingMethods(PyFunction pyFunction, Processor<? super PsiElement> consumer) {
+    final Query<PyFunction> query = ReadAction.compute(() -> PyOverridingMethodsSearch.search(pyFunction, true, true));
+    return !(query instanceof EmptyQuery) && query.forEach(consumer);
+}
+
+private boolean processAssignmentStatement(PsiElement element, Processor<? super PsiElement> consumer) {
+    final PsiElement parent = ReadAction.compute(() -> element.getParent());
+    return !(parent instanceof PyAssignmentStatement) || consumer.process(parent);
+}
+```
+
+The refactored method is more optimal because of the following reasons:
+
+1. Separation of concerns: I've split the original method into smaller, more focused methods that handle specific cases such as `processInheritors`, `processOverridingMethods`, and `processAssignmentStatement`.
+
+2. Improved readability: The original method had many nested if-else conditions which made it difficult to follow and understand. By dividing it into smaller methods, the control flow is now easier to read and understand.
+
+3. Easier to maintain and extend: With the new structure, it's easier to modify or add new functionality as it would involve updating or adding a specific method rather than modifying the entire `execute` method.
+
+4. Remove redundant variable assignments: I've removed the redundant variable assignments like `finalElement` and `e`, which were just duplicates of the original `element` variable.
+
+Overall, the refactored method not only improves readability and maintainability but also makes it more efficient by removing unnecessary actions.
+!!You**:_____
+Inside ReadAction.compute need to be final element so I created additional variables could you rewrite with this fact
+!!Bot**:_____
+I have updated the refactored method with the required use of final elements inside ReadAction.compute():
+
+```java
+@Override
+public boolean execute(@NotNull PsiElement element, @NotNull final Processor<? super PsiElement> consumer) {
+    if (element instanceof PyElement) {
+        final PsiElement finalElement = element;
+        final boolean isInsideStub = ReadAction.compute(() -> PyiUtil.isInsideStub(finalElement));
+        if (isInsideStub) {
+            final PyElement originalElement = ReadAction.compute(() -> PyiUtil.getOriginalElement((PyElement) finalElement));
+            if (originalElement != null) {
+                element = originalElement;
+                if (!consumer.process(element)) return false;
+            }
+        }
+    }
+
+    if (element instanceof PyClass) {
+        return processInheritors((PyClass) element, consumer);
+    } else if (element instanceof PyFunction) {
+        return processOverridingMethods((PyFunction) element, consumer);
+    } else if (element instanceof PyTargetExpression) {
+        final PsiElement finalElement = element;
+        return processAssignmentStatement(finalElement, consumer);
+    }
+
+    return true;
+}
+
+private boolean processInheritors(PyClass pyClass, Processor<? super PsiElement> consumer) {
+    final Query<PyClass> query = PyClassInheritorsSearch.search(pyClass, true);
+    return !(query instanceof EmptyQuery) && query.forEach(consumer);
+}
+
+private boolean processOverridingMethods(PyFunction pyFunction, Processor<? super PsiElement> consumer) {
+    final Query<PyFunction> query = ReadAction.compute(() -> PyOverridingMethodsSearch.search(pyFunction, true, true));
+    return !(query instanceof EmptyQuery) && query.forEach(consumer);
+}
+
+private boolean processAssignmentStatement(PsiElement element, Processor<? super PsiElement> consumer) {
+    final PsiElement parent = ReadAction.compute(() -> element.getParent());
+    return !(parent instanceof PyAssignmentStatement) || consumer.process(parent);
+}
+```
+
+I have added the `finalElement` inside the if-conditions and passed it to the `processAssignmentStatement()` method. This modification ensures that the `element` variable is not modified inside ReadAction.compute(), and only the required final variables are used within the lambda. The overall design and improvements from the previous refactoring remain the same.

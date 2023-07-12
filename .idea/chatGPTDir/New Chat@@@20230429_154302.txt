@@ -1,0 +1,163 @@
+!!You**:_____
+Rewrite this method in more optimal way
+
+@Override
+  public boolean execute(@NotNull PsiElement element, @NotNull final Processor<? super PsiElement> consumer) {
+    if (element instanceof PyElement) {
+      final PsiElement finalElement = element;
+      boolean isInsideStub = ReadAction.compute(() -> PyiUtil.isInsideStub(finalElement));
+      if (isInsideStub) {
+        var originalElement = ReadAction.compute(() -> PyiUtil.getOriginalElement((PyElement)finalElement));
+        if (originalElement != null) {
+          element = originalElement;
+          if (!consumer.process(element)) return false;
+        }
+      }
+    }
+    final PsiElement e = element;
+    if (e instanceof PyClass) {
+      final Query<PyClass> query = PyClassInheritorsSearch.search((PyClass)e, true);
+
+      if (!(query instanceof EmptyQuery<PyClass>)) {
+        return query.forEach(consumer);
+      }
+    }
+    else if (e instanceof PyFunction) {
+      final Query<PyFunction> query =
+        ReadAction.compute(() -> PyOverridingMethodsSearch.search((PyFunction)e, true, true));
+
+      if (!(query instanceof EmptyQuery<PyFunction>)) {
+        return query.forEach(consumer);
+      }
+    }
+    else if (e instanceof PyTargetExpression) {  // PY-237
+      final PsiElement parent = ReadAction.compute(() -> e.getParent());
+
+      if (parent instanceof PyAssignmentStatement) {
+        return consumer.process(parent);
+      }
+    }
+    return true;
+  }
+!!Bot**:_____
+@Override
+public boolean execute(@NotNull PsiElement element, @NotNull final Processor<? super PsiElement> consumer) {
+  if (element instanceof PyElement) {
+    final PsiElement finalElement = element;
+    final boolean[] isInsideStub = new boolean[1];
+    final PyElement[] originalElement = new PyElement[1];
+    
+    ReadAction.run(() -> {
+      isInsideStub[0] = PyiUtil.isInsideStub(finalElement);
+      if (isInsideStub[0]) {
+        originalElement[0] = PyiUtil.getOriginalElement((PyElement) finalElement);
+      }
+    });
+
+    if (isInsideStub[0] && originalElement[0] != null) {
+      element = originalElement[0];
+      if (!consumer.process(element)) return false;
+    }
+  }
+
+  if (element instanceof PyClass) {
+    final Query<PyClass> query = PyClassInheritorsSearch.search((PyClass) element, true);
+    if (!(query instanceof EmptyQuery<PyClass>)) {
+      return query.forEach(consumer);
+    }
+  } else if (element instanceof PyFunction) {
+    final Query<PyFunction> query =
+      ReadAction.compute(() -> PyOverridingMethodsSearch.search((PyFunction) element, true, true));
+    if (!(query instanceof EmptyQuery<PyFunction>)) {
+      return query.forEach(consumer);
+    }
+  } else if (element instanceof PyTargetExpression) { // PY-237
+    final PsiElement parent = ReadAction.compute(() -> element.getParent());
+    if (parent instanceof PyAssignmentStatement) {
+      return consumer.process(parent);
+    }
+  }
+  
+  return true;
+}
+!!You**:_____
+Refactor please this method
+
+@Override
+  public boolean execute(@NotNull PsiElement element, @NotNull final Processor<? super PsiElement> consumer) {
+    if (element instanceof PyElement) {
+      final PsiElement finalElement = element;
+      boolean isInsideStub = ReadAction.compute(() -> PyiUtil.isInsideStub(finalElement));
+      if (isInsideStub) {
+        var originalElement = ReadAction.compute(() -> PyiUtil.getOriginalElement((PyElement)finalElement));
+        if (originalElement != null) {
+          element = originalElement;
+          if (!consumer.process(element)) return false;
+        }
+      }
+    }
+    final PsiElement e = element;
+    if (e instanceof PyClass) {
+      final Query<PyClass> query = PyClassInheritorsSearch.search((PyClass)e, true);
+
+      if (!(query instanceof EmptyQuery<PyClass>)) {
+        return query.forEach(consumer);
+      }
+    }
+    else if (e instanceof PyFunction) {
+      final Query<PyFunction> query =
+        ReadAction.compute(() -> PyOverridingMethodsSearch.search((PyFunction)e, true, true));
+
+      if (!(query instanceof EmptyQuery<PyFunction>)) {
+        return query.forEach(consumer);
+      }
+    }
+    else if (e instanceof PyTargetExpression) {  // PY-237
+      final PsiElement parent = ReadAction.compute(() -> e.getParent());
+
+      if (parent instanceof PyAssignmentStatement) {
+        return consumer.process(parent);
+      }
+    }
+    return true;
+  }
+!!Bot**:_____
+@Override
+public boolean execute(@NotNull PsiElement element, @NotNull final Processor<? super PsiElement> consumer) {
+  if (element instanceof PyElement) {
+    PsiElement finalElement = element;
+    
+    ReadAction.run(() -> {
+      boolean isInsideStub = PyiUtil.isInsideStub(finalElement);
+      if (isInsideStub) {
+        PyElement originalElement = PyiUtil.getOriginalElement((PyElement) finalElement);
+        if (originalElement != null) {
+          element = originalElement;
+        }
+      }
+    });
+    
+    if (!consumer.process(element)) return false;
+  }
+
+  if (element instanceof PyClass) {
+    final Query<PyClass> query = PyClassInheritorsSearch.search((PyClass) element, true);
+    if (!(query instanceof EmptyQuery<PyClass>)) {
+      return query.forEach(consumer);
+    }
+  } else if (element instanceof PyFunction) {
+    final Query<PyFunction> query = ReadAction.compute(() -> PyOverridingMethodsSearch.search((PyFunction) element, true, true));
+    
+    if (!(query instanceof EmptyQuery<PyFunction>)) {
+      return query.forEach(consumer);
+    }
+  } else if (element instanceof PyTargetExpression) {
+    final PsiElement parent = ReadAction.compute(() -> element.getParent());
+    
+    if (parent instanceof PyAssignmentStatement) {
+      return consumer.process(parent);
+    }
+  }
+  
+  return true;
+}

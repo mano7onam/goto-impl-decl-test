@@ -1,0 +1,3 @@
+import class_example
+
+class_example.mymodule.Clazz

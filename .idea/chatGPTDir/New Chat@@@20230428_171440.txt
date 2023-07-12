@@ -1,0 +1,25 @@
+!!You**:_____
+How to make this not tabs create but tabs update
+Chrome extension 
+
+ext_1.ext.tabs.create({
+        url: (0, exports.INSTALL_URL)(),
+        active: true,
+    });
+!!Bot**:_____
+You can use `ext_1.ext.tabs.update` method to update an existing tab instead of creating a new one. First, you need to get the current tab's ID and then update the content using the `update` method.
+
+Here's an example:
+
+```javascript
+ext_1.ext.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+    let currentTabId = tabs[0].id;
+
+    ext_1.ext.tabs.update(currentTabId, {
+        url: (0, exports.INSTALL_URL)(),
+        active: true,
+    });
+});
+```
+
+In this example, we first query the active tab in the current window, get its ID, and store it in the `currentTabId` variable. Then, we update the active tab's URL and set it to the new URL you want to load.
